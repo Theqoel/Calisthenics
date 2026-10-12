@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Wrist-safe 8-week calisthenics tracker with automatic progression.">
+<meta name="theme-color" content="#EDF0EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1413" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calisthenics">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>8-Week Calisthenics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-first column (max 680px), sticky tab header, fixed rest-timer bar on the Today tab.
+   Ladder "rungs" mark level progress; green/amber/red is reserved for the wrist check. */
+:root{
+  color-scheme:light;
+  --bg:#EDF0EE; --surface:#FFFFFF; --sunk:#E3E8E5; --ink:#17201E; --muted:#58665F; --line:#D2DAD6;
+  --accent:#2A4FD4; --accent-ink:#FFFFFF; --accent-soft:#E2E8FB;
+  --green:#1D7F46; --green-soft:#DCF0E3; --amber:#9A6A00; --amber-soft:#F8ECCB; --red:#BF342C; --red-soft:#F7DCD9;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1413; --surface:#171E1C; --sunk:#202826; --ink:#E5ECE9; --muted:#95A49E; --line:#2B3532;
+    --accent:#86A0FF; --accent-ink:#0F1413; --accent-soft:#1F2846;
+    --green:#62CD90; --green-soft:#16301F; --amber:#E8B84A; --amber-soft:#382C10; --red:#F2847B; --red-soft:#3D1B19;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1413; --surface:#171E1C; --sunk:#202826; --ink:#E5ECE9; --muted:#95A49E; --line:#2B3532;
+  --accent:#86A0FF; --accent-ink:#0F1413; --accent-soft:#1F2846;
+  --green:#62CD90; --green-soft:#16301F; --amber:#E8B84A; --amber-soft:#382C10; --red:#F2847B; --red-soft:#3D1B19;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+button{-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 calc(132px + env(safe-area-inset-bottom,0px));overscroll-behavior-y:none}
+.app{max-width:680px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+p{margin:0}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Header + tabs */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);margin-inline:-16px;padding-inline:16px;padding-block:calc(12px + env(safe-area-inset-top,0px)) 0;border-bottom:1px solid var(--line)}
+.top-inner{max-width:680px;margin:0 auto}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand-name{font-family:var(--display);font-weight:800;font-stretch:80%;font-size:20px;letter-spacing:.01em}
+.sync{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.sync[data-s="device"]::before{background:var(--green)}
+.sync[data-s="error"]::before{background:var(--amber)}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin-top:8px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:8px 10px 10px;font-weight:600;font-size:14px;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+main{display:grid;gap:18px;padding-block:20px 0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+/* Session head */
+.head{display:grid;gap:8px}
+.head h1{font-size:44px;font-weight:800;font-stretch:78%;letter-spacing:-.01em}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:14px}
+.meta b{color:var(--ink);font-weight:600}
+.datefield{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.datefield input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+
+/* Banners */
+.banner{border-radius:12px;padding:12px 14px;display:grid;gap:4px;font-size:14px;border:1px solid var(--line);background:var(--surface)}
+.banner.info{background:var(--accent-soft);border-color:transparent}
+.banner.amber{background:var(--amber-soft);border-color:transparent}
+.banner.red{background:var(--red-soft);border-color:transparent}
+.banner.green{background:var(--green-soft);border-color:transparent}
+.banner strong{font-weight:700}
+
+/* Routine checklists */
+details.routine{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+details.routine>summary{list-style:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:600}
+details.routine>summary::-webkit-details-marker{display:none}
+details.routine>summary::after{content:"+";font-family:var(--display);font-size:22px;color:var(--muted);line-height:1}
+details.routine[open]>summary::after{content:"–"}
+.checklist{list-style:none;margin:0;padding:0 16px 14px;display:grid;gap:2px}
+.checklist label{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
+.checklist input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex:none}
+.checklist .amt{margin-left:auto;color:var(--muted);font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.checklist input:checked ~ span:not(.amt){text-decoration:line-through;color:var(--muted)}
+
+.circuit-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.circuit-label h2{font-size:22px;font-weight:700;font-stretch:85%}
+
+/* Exercise cards */
+.ex{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:14px;min-width:0}
+.ex-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.ex-head h3{font-size:22px;font-weight:700;font-stretch:88%;margin-top:2px}
+.ladder{display:flex;align-items:center;gap:8px;flex:none}
+.rungs{display:inline-flex;flex-direction:column-reverse;gap:3px}
+.rung{display:block;width:20px;height:4px;border-radius:1px;background:var(--line)}
+.rung.on{background:var(--accent)}
+.lvl-txt{font-family:var(--display);font-weight:700;font-stretch:80%;font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+.target{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tnum{font-family:var(--display);font-weight:800;font-stretch:72%;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.tunit{font-weight:600;color:var(--muted)}
+.range{font-size:13px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.chip.grip{background:var(--amber-soft);color:var(--amber)}
+.how{font-size:14px;max-width:62ch}
+
+.rounds{display:flex;gap:8px;flex-wrap:wrap}
+.round{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+.rlabel{font-size:11px;font-weight:700;color:var(--muted);padding-left:10px;letter-spacing:.05em}
+.step{width:40px;height:46px;border:0;background:none;font-size:22px;font-family:var(--display);font-weight:700;color:var(--muted)}
+.step:hover{color:var(--ink)}
+.rin{width:3.1em;border:0;background:none;text-align:center;font-family:var(--display);font-weight:800;font-stretch:80%;font-size:22px;font-variant-numeric:tabular-nums;padding:0;-moz-appearance:textfield}
+.rin::-webkit-outer-spin-button,.rin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.timer-btn{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 14px;height:48px;font-weight:600;font-size:14px}
+
+.row-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.wrist{display:grid;gap:8px}
+.lights{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.light{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 6px;display:grid;gap:1px;text-align:center;font-size:13px;line-height:1.25}
+.light b{font-size:14px}
+.light span{color:var(--muted);font-size:12px}
+.light[data-v="G"][aria-pressed="true"]{border-color:var(--green);background:var(--green-soft)}
+.light[data-v="Y"][aria-pressed="true"]{border-color:var(--amber);background:var(--amber-soft)}
+.light[data-v="R"][aria-pressed="true"]{border-color:var(--red);background:var(--red-soft)}
+.light[data-v="G"] b{color:var(--green)} .light[data-v="Y"] b{color:var(--amber)} .light[data-v="R"] b{color:var(--red)}
+.note{font-size:13.5px;border-radius:10px;padding:9px 12px}
+.note.amber{background:var(--amber-soft)} .note.red{background:var(--red-soft)} .note.info{background:var(--accent-soft)}
+.toggles{display:grid;gap:6px}
+.toggle{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.toggle input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex:none}
+details.tips{border-top:1px solid var(--line);padding-top:10px}
+details.tips>summary{font-weight:600;font-size:14px;color:var(--accent);cursor:pointer}
+.tips-body{display:grid;gap:10px;padding-top:10px;font-size:14px}
+.tips-body ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.swapbox{background:var(--sunk);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.lvl-pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lvl-pick select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;max-width:100%}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px}
+.btn-primary{width:100%;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);height:56px;font-family:var(--display);font-weight:800;font-stretch:85%;font-size:20px;letter-spacing:.01em}
+.btn-danger{background:var(--red);color:var(--surface);border-color:transparent}
+.error{color:var(--red);font-weight:600;font-size:14px}
+.restore-box{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:10px;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);resize:vertical}
+.btn:disabled{opacity:.45;cursor:default}
+.file-pick{font-size:13px;color:var(--muted);max-width:100%}
+
+/* Summary */
+.summary{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:10px}
+.summary h2{font-size:24px;font-weight:800;font-stretch:80%}
+.next-list{list-style:none;margin:0;padding:0;display:grid}
+.next-list li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}
+.next-list .why{color:var(--muted);font-size:13px}
+.up{color:var(--green);font-weight:700}
+.down{color:var(--red);font-weight:700}
+
+/* Plan grid */
+.progress{height:8px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.weeks{display:grid;gap:8px}
+.week{display:grid;grid-template-columns:76px repeat(3,minmax(0,1fr));gap:6px;align-items:stretch}
+.wk{display:grid;align-content:center;font-size:12px;line-height:1.25}
+.wk b{font-family:var(--display);font-weight:800;font-stretch:80%;font-size:17px}
+.cell{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px;display:grid;gap:1px;font-size:12px;min-width:0}
+.cell .wo{font-family:var(--display);font-weight:800;font-stretch:80%;font-size:20px;line-height:1}
+.cell .st{font-weight:600}
+.cell.done{background:var(--green-soft);border-color:transparent}
+.cell.done .st{color:var(--green)}
+.cell.next{border:2px solid var(--accent)}
+.cell.next .st{color:var(--accent)}
+.phase-key{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+
+/* Ladders */
+.track{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px}
+.track h2{font-size:24px;font-weight:800;font-stretch:80%}
+.levels{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.levels li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.levels .n{font-family:var(--display);font-weight:800;font-stretch:80%;font-size:22px;color:var(--muted);line-height:1.1}
+.levels li.cur .n{color:var(--accent)}
+.levels li.cur{background:linear-gradient(90deg,var(--accent-soft),transparent);margin-inline:-16px;padding-inline:16px;grid-template-columns:34px minmax(0,1fr)}
+.levels .nm{font-weight:600}
+.levels .rg{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.here{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+
+/* Wrist guide */
+.guide{display:grid;gap:14px}
+.guide h2{font-size:24px;font-weight:800;font-stretch:80%}
+.section{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:10px}
+.section ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.lightrow{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.lightrow .tag{font-weight:800;font-family:var(--display);font-stretch:80%;font-size:18px}
+.lightrow.G .tag{color:var(--green)} .lightrow.Y .tag{color:var(--amber)} .lightrow.R .tag{color:var(--red)}
+.lightrow p+p{margin-top:4px}
+
+/* Log */
+.entry{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:grid;gap:8px}
+.entry-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.entry-head b{font-family:var(--display);font-weight:800;font-stretch:80%;font-size:19px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px 6px 0;border-top:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;border-top:0}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+.dot.G{background:var(--green)} .dot.Y{background:var(--amber)} .dot.R{background:var(--red)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:20px;text-align:center;color:var(--muted)}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+
+/* Timer bar */
+.timerbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.tb-inner{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.tb-text{display:grid;line-height:1.25;min-width:0}
+.tb-text b{font-size:14px}
+.tb-text span{font-size:12px;color:var(--muted)}
+.tb-clock{font-family:var(--display);font-weight:800;font-stretch:72%;font-size:36px;font-variant-numeric:tabular-nums;line-height:1}
+.tb-clock.done{color:var(--green)}
+.tb-btn{border:0;background:var(--accent);color:var(--accent-ink);border-radius:12px;height:46px;padding:0 18px;font-weight:700;white-space:nowrap}
+.tb-btn.ghost{background:var(--sunk);color:var(--ink)}
+footer{padding-block:28px 0;font-size:13px;color:var(--muted);display:grid;gap:4px}
+@media (prefers-reduced-motion:no-preference){.progress i{transition:width .4s ease}}
+@media (max-width:420px){.head h1{font-size:38px}.tnum{font-size:40px}.week{grid-template-columns:58px repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand"><span class="brand-name">8-Week Calisthenics</span><span class="sync" id="sync" data-s="device">Saved on this phone</span></div>
+      <nav class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" data-tab="today">Today</button>
+        <button class="tab" role="tab" data-tab="plan">Plan</button>
+        <button class="tab" role="tab" data-tab="ladders">Ladders</button>
+        <button class="tab" role="tab" data-tab="wrist">Wrist guide</button>
+        <button class="tab" role="tab" data-tab="log">Log</button>
+      </nav>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<div class="timerbar" id="timerbar" hidden>
+  <div class="tb-inner">
+    <div class="tb-text" id="tb-text"></div>
+    <div class="tb-clock" id="tb-clock" hidden></div>
+    <button class="tb-btn" id="tb-btn" type="button"></button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var START='2026-10-12';
+var TOTAL=24;
+var DOC_URL='https://claude.ai/code/artifact/23e04b35-c816-42c9-ab4a-062de774a7ff';
+var LS_LOG='calis8.v1.log', LS_DRAFT='calis8.v1.draft', LS_TAB='calis8.v1.tab';
+
+var TRACKS={
+  push:{name:'Push',where:'Workout A & B',grip:'neutral',levels:[
+    {name:'Counter push-up',min:8,max:12,unit:'reps',how:'Wrap your hands around the edge of the kitchen counter and step back until you are one straight line from heels to head. Lower your chest to the edge, then press away.'},
+    {name:'Table push-up',min:8,max:12,unit:'reps',how:'Same grip on a sturdy table or desk edge, about 29 in high. Push it against a wall if it slides.'},
+    {name:'Low incline push-up',min:8,max:12,unit:'reps',how:'Grip the front edge of a sturdy chair braced against a wall, or put push-up handles on a stair, about 18 in high.'},
+    {name:'Knee push-up on handles',min:8,max:12,unit:'reps',how:'Handles under your shoulders, knees on a folded towel. Hips stay in line with your shoulders, no sagging.'},
+    {name:'Full push-up on handles',min:5,max:10,unit:'reps',how:'Handles under your shoulders, body rigid. Lower until your chest is just above the floor, elbows about 45° from your sides.'}],
+    tips:['Knuckles stay in line with your forearm. Never push through flat palms.','Hold the edge or handles firmly, not in a death grip.','Lower for about 2 seconds; a slow lowering is easier on the wrist than a fast bounce.'],
+    swap:{name:'Forearm wall push-up',how:'Forearms flat on a wall, elbows under your shoulders, feet stepped back. Push your chest away from the wall. Your wrists carry nothing.'}},
+  squat:{name:'Squat',where:'Workout A',grip:'none',levels:[
+    {name:'Box squat',min:8,max:15,unit:'reps',how:'Sit back lightly onto a chair, then stand up without rocking forward. Feet shoulder-width, knees track over your toes.'},
+    {name:'Bodyweight squat',min:8,max:15,unit:'reps',how:'Sit down between your heels as deep as you can with heels flat. Reach your arms forward for balance.'},
+    {name:'Pause squat',min:8,max:12,unit:'reps',how:'Squat down, hold still for 3 seconds at the bottom, then stand up.'},
+    {name:'Split squat',min:8,max:12,unit:'reps/leg',how:'Staggered stance. Drop the back knee toward the floor while the front heel stays down. Fingertips on a wall for balance.'},
+    {name:'Rear-foot-elevated split squat',min:6,max:10,unit:'reps/leg',how:'Back foot laces-down on the couch. Step the front foot far enough forward that the knee stays over the foot.'}],
+    tips:['No wrist load. Balance with fingertips on the wall, not a gripping hand.']},
+  hinge:{name:'Hinge',where:'Workout B',grip:'none',levels:[
+    {name:'Glute bridge',min:10,max:15,unit:'reps',how:'On your back, knees bent, feet flat. Drive through your heels and squeeze your glutes until hips line up with knees and shoulders.'},
+    {name:'Glute bridge with 3 s squeeze',min:10,max:15,unit:'reps',how:'Same bridge, but hold the top for 3 seconds every rep.'},
+    {name:'Single-leg glute bridge',min:8,max:12,unit:'reps/leg',how:'One foot on the floor, the other knee pulled toward your chest. Bridge up through the planted heel.'},
+    {name:'Hip thrust',min:10,max:15,unit:'reps',how:'Upper back on the couch edge, feet flat. Push your hips up until your torso is level, then lower.'},
+    {name:'Single-leg hip thrust',min:8,max:12,unit:'reps/leg',how:'Same couch setup on one leg. Keep the hips level as you rise.'}],
+    tips:['Arms rest on the floor. Do not press through your hands.']},
+  row:{name:'Row',where:'Workout A',grip:'grip',levels:[
+    {name:'Door-frame row',min:8,max:12,unit:'reps',how:'Grip both sides of a door frame at chest height, feet about 12 in behind the threshold. Lean back with straight arms, then pull your chest to the frame.'},
+    {name:'Door-frame row, more lean',min:8,max:12,unit:'reps',how:'Same row with your toes right at the threshold, so you lean back further.'},
+    {name:'Table row, knees bent',min:6,max:10,unit:'reps',how:'Lie under a sturdy dining table, grip the edge shoulder-width, heels down with knees bent. Pull your chest to the table and lower slowly.'},
+    {name:'Table row, legs straight',min:6,max:10,unit:'reps',how:'Same table row with legs straight, heels on the floor.'}],
+    tips:['This is the only grip-loaded exercise. It runs about every 4–5 days.','Thumbs-up grip on the door frame is the kindest position for the wrist.','Lock the wrist straight. Do not let it curl as you pull; lead with your elbows.','Test the table before Level 3. Light tables can tip.'],
+    swap:{name:'Back exercise (no grip)',how:'Do your current Back exercise from Workout B instead: lying face down, thumbs up, no grip at all.'}},
+  back:{name:'Back',where:'Workout B',grip:'none',levels:[
+    {name:'Prone T raise',min:8,max:12,unit:'reps',how:'Face down, arms straight out to the sides, thumbs up. Lift the arms a few inches by squeezing your shoulder blades together. Hold 1 second.'},
+    {name:'Prone Y-T-W',min:6,max:10,unit:'reps',how:'Arms in a Y overhead, then a T, then a W (elbows bent, pulled toward your ribs). One Y + T + W = 1 rep.'},
+    {name:'Reverse snow angel',min:8,max:12,unit:'reps',how:'Arms hovering off the floor, sweep them from overhead down to your hips and back without touching down.'},
+    {name:'Reverse snow angel, 2 s holds',min:8,max:12,unit:'reps',how:'Same sweep with a 2-second hold at the top and the bottom.'}],
+    tips:['No grip and no wrist load. Thumbs point up the whole time.']},
+  plank:{name:'Plank',where:'Workout A',grip:'none',levels:[
+    {name:'Incline forearm plank',min:20,max:45,unit:'sec',how:'Forearms on the kitchen counter, walk your feet back to a straight line. Squeeze your glutes and keep breathing.'},
+    {name:'Knee forearm plank',min:20,max:45,unit:'sec',how:'Forearms on the floor, knees down, straight line from knees to head.'},
+    {name:'Forearm plank',min:20,max:45,unit:'sec',how:'Forearms and toes. Squeeze glutes and brace like someone is about to poke your stomach.'},
+    {name:'Side plank, knees bent',min:15,max:30,unit:'sec/side',how:'On one forearm, elbow under the shoulder, knees bent. Lift the hips into a straight line.'}],
+    tips:['On forearms, hands loose or palms facing each other. The wrist carries no weight.','If you catch yourself clenching your fists, open the hands.'],
+    swap:{name:'Dead bug instead',how:'If elbows or shoulders complain, do your current Dead bug exercise from Workout B for the same rounds.'}},
+  core:{name:'Dead bug',where:'Workout B',grip:'none',levels:[
+    {name:'Heel taps',min:6,max:10,unit:'reps/side',how:'On your back, knees bent 90° above your hips. Keep your low back pressed down and lower one heel to tap the floor, then switch.'},
+    {name:'Dead bug',min:6,max:10,unit:'reps/side',how:'Arms straight up, knees over hips. Reach the opposite arm and leg toward the floor, return, switch.'},
+    {name:'Dead bug, 3 s pause',min:6,max:10,unit:'reps/side',how:'Same dead bug, holding the extended position for 3 seconds.'},
+    {name:'Hollow tuck hold',min:15,max:30,unit:'sec',how:'Knees pulled in, shoulders and feet just off the floor, low back pressed down.'}],
+    tips:['No wrist load. If your low back lifts off the floor, shorten the reach.']}
+};
+Object.keys(TRACKS).forEach(function(k){TRACKS[k].levels.forEach(function(L){L.step=L.unit.indexOf('sec')===0?5:1;});});
+var ORDER=['push','squat','hinge','row','back','plank','core'];
+var WORKOUTS={A:['squat','push','row','plank'],B:['hinge','push','back','core']};
+var PHASES={1:{name:'Foundation',rounds:2,rest:'60–90 s',restSec:75,time:'~15 min'},2:{name:'Build',rounds:3,rest:'60 s',restSec:60,time:'~18 min'},3:{name:'Strengthen',rounds:3,rest:'45–60 s',restSec:50,time:'~19 min'}};
+var WARMUP=[['March in place with big arm circles','60 s'],['Standing cat-cow, hands on thighs','8 slow'],['Good mornings, hands on hips','10'],['Leg swings holding a wall, front-back and side-side','10 + 10 / leg'],['Hip circles','5 each way'],['Wrist circles and open-close fists, pain-free only','10 each'],['Slow box squats to a chair','5']];
+var COOLDOWN=[['Half-kneeling hip flexor stretch, towel under knee','30 s / side'],['Lying hamstring stretch, heel up a door frame','30 s / side'],['Lying figure-4 glute stretch','30 s / side'],['Doorway chest stretch, forearms on the frame','30 s']];
+
+/* ---------- dates ---------- */
+function s2d(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function d2s(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function addDays(s,n){var d=s2d(s);d.setDate(d.getDate()+n);return d2s(d);}
+function diffDays(a,b){return Math.round((s2d(b)-s2d(a))/86400000);}
+function todayS(){return d2s(new Date());}
+function fmtDate(s){return s2d(s).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
+function fmtShort(s){return s2d(s).toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function validDate(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s);}
+
+/* ---------- schedule ---------- */
+function workoutFor(i){return i%2===0?'A':'B';}
+function phaseFor(i){return i<6?1:(i<15?2:3);}
+function roundsFor(i){return PHASES[phaseFor(i)].rounds;}
+function weekFor(i){return Math.floor(i/3)+1;}
+function plannedDate(i){return addDays(START,Math.floor(i/3)*7+[0,2,4][i%3]);}
+function nextIndexFor(k,i){for(var j=i+1;j<i+4;j++){if(WORKOUTS[workoutFor(j)].indexOf(k)>=0)return j;}return i+1;}
+function unitLabel(u){return {'reps':'reps','reps/leg':'reps / leg','reps/side':'reps / side','sec':'sec','sec/side':'sec / side'}[u]||u;}
+function isHold(L){return L.unit.indexOf('sec')===0;}
+
+/* ---------- progression engine ---------- */
+function freshState(){var s={};ORDER.forEach(function(k){s[k]={level:0,target:TRACKS[k].levels[0].min,miss:0,lastLevel:null,lastTarget:null};});return s;}
+function clampLevel(k,l){var n=TRACKS[k].levels.length;l=Number(l)||0;return Math.max(0,Math.min(n-1,l));}
+function backOneLevel(st,k){var lv=TRACKS[k].levels;if(st.level>0){st.level--;var P=lv[st.level];st.target=Math.max(P.min,P.max-2*P.step);return 'back';}st.target=lv[0].min;return 'repeat';}
+function applyResult(st,k,r,i,rounds){
+  var lv=TRACKS[k].levels;
+  st.level=clampLevel(k,r.level);st.target=Number(r.target);st.lastLevel=st.level;st.lastTarget=st.target;
+  var L=lv[st.level];
+  if(r.wrist==='R'){st.miss=0;return backOneLevel(st,k);}
+  if(r.swapped)return 'swap';
+  if(r.wrist==='Y')return 'yellow';
+  var reps=(r.reps||[]).slice(0,rounds).map(Number);
+  var hit=reps.length>=rounds&&reps.every(function(x){return x>=st.target;});
+  if(hit){
+    st.miss=0;
+    if(r.easy&&st.level<lv.length-1){st.level++;st.target=lv[st.level].min;return 'up';}
+    if(roundsFor(nextIndexFor(k,i))>rounds)return 'hold3';
+    var nt=st.target+L.step;
+    if(nt>L.max){if(st.level<lv.length-1){st.level++;st.target=lv[st.level].min;return 'up';}st.target=L.max;return 'top';}
+    st.target=nt;return 'plus';
+  }
+  st.miss++;
+  if(st.miss>=2){st.miss=0;
+    if(st.target<=L.min)return backOneLevel(st,k);
+    st.target=Math.max(L.min,st.target-2*L.step);return 'drop';}
+  return 'repeat';
+}
+function replayAll(lg){
+  var st=freshState(),outs=[];
+  lg.forEach(function(e,i){var o={};Object.keys(e.results||{}).forEach(function(k){if(st[k])o[k]=applyResult(st[k],k,e.results[k],i,e.rounds||roundsFor(i));});outs.push(o);});
+  return {state:st,outcomes:outs};
+}
+var OUTCOME={
+  plus:{cls:'up',txt:function(L){return L.step===5?'+5 s':'+1 rep';},why:'Hit every round'},
+  up:{cls:'up',txt:function(){return 'Level up';},why:'Topped out the range'},
+  top:{cls:'up',txt:function(){return 'Top of ladder';},why:'Hold here; slow the lowering to 3 s for more'},
+  hold3:{cls:'',txt:function(){return 'Same target';},why:'Next time adds a third round'},
+  swap:{cls:'',txt:function(){return 'Same target';},why:'You used the wrist swap'},
+  yellow:{cls:'',txt:function(){return 'Same target';},why:'Wrist was yellow'},
+  repeat:{cls:'',txt:function(){return 'Repeat';},why:'Missed the target'},
+  drop:{cls:'down',txt:function(L){return L.step===5?'−10 s':'−2 reps';},why:'Missed twice in a row'},
+  back:{cls:'down',txt:function(){return 'Back one level';},why:'Wrist red or missed twice at the bottom'}
+};
+
+/* ---------- state ---------- */
+function lsGet(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+function cleanLog(x){return Array.isArray(x)?x.filter(function(e){return e&&typeof e==='object'&&e.results;}):[];}
+var log=cleanLog(lsGet(LS_LOG));
+var draft=lsGet(LS_DRAFT);
+var ui={tab:'today',open:{warmup:true},summary:null,confirmUndo:false,error:'',backupMsg:'',restoreText:'',restoreMsg:'',pendingRestore:null,awake:false};
+var savedTab=lsGet(LS_TAB);if(['today','plan','ladders','wrist','log'].indexOf(savedTab)>=0)ui.tab=savedTab;
+var syncState='device';
+
+function returningGap(){if(!log.length)return 0;var last=log[log.length-1].date;return validDate(last)?diffDays(last,todayS()):0;}
+function planFor(i){
+  var st=replayAll(log).state,returning=returningGap()>=8;
+  return WORKOUTS[workoutFor(i)].map(function(k){var s=st[k],level=s.level,target=s.target;
+    if(returning&&s.lastTarget!=null){level=s.lastLevel;target=s.lastTarget;}
+    return {k:k,level:level,target:target};});
+}
+function ensureDraft(){
+  var i=log.length;
+  if(!draft||draft.i!==i||!draft.res){
+    var rounds=roundsFor(i);
+    draft={i:i,date:todayS(),dateEdited:false,res:{},checks:{}};
+    planFor(i).forEach(function(p){draft.res[p.k]={level:p.level,target:p.target,reps:new Array(rounds).fill(p.target),wrist:'G',swapped:false,easy:false};});
+    saveDraft();
+  } else if(!draft.dateEdited&&draft.date!==todayS()){draft.date=todayS();saveDraft();}
+  if(!draft.checks)draft.checks={};
+}
+function saveDraft(){lsSet(LS_DRAFT,draft);}
+function saveLocal(){lsSet(LS_LOG,log);}
+
+function setSync(s){syncState=s;var el=document.getElementById('sync');el.dataset.s=s;
+  el.textContent={device:'Saved on this phone',error:'Could not save · storage is blocked'}[s]||'';}
+var askedPersist=false;
+function askPersistent(){if(askedPersist)return;askedPersist=true;try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(function(){});}catch(e){}}
+function persist(){var ok=lsSet(LS_LOG,log);setSync(ok?'device':'error');askPersistent();return Promise.resolve();}
+
+/* ---------- backup ---------- */
+function backupText(){return JSON.stringify({app:'calis8',v:1,exported:new Date().toISOString(),log:log});}
+function copyBackup(){
+  var txt=backupText();
+  function fallback(){ui.restoreText=txt;ui.open.restore=true;ui.backupMsg='Copy did not work here. The backup is in the box below; select it and copy.';render();}
+  try{navigator.clipboard.writeText(txt).then(function(){ui.backupMsg='Copied '+log.length+' session'+(log.length===1?'':'s')+'. Paste it into Notes or an email to yourself.';render();},fallback);}catch(e){fallback();}
+}
+function shareBackup(){
+  var txt=backupText(),name='calisthenics-backup-'+todayS()+'.json';
+  try{var f=new File([txt],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Calisthenics backup'}).catch(function(){});return;}}catch(e){}
+  try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);ui.backupMsg='Saved '+name+'.';render();}
+  catch(e){ui.backupMsg='Saving a file is not supported here. Use Copy backup instead.';render();}
+}
+function parseBackup(t){
+  var d;try{d=JSON.parse(t);}catch(e){return null;}
+  var lg=Array.isArray(d)?d:(d&&d.log);
+  lg=cleanLog(lg);
+  return lg.length?lg:null;
+}
+function backupHTML(){
+  var dis=log.length?'':' disabled';
+  var h='<section class="section"><h2>Backup</h2><p class="small muted">Your log lives only on this phone. Copy a backup every week or two (into Notes, or an email to yourself) so a new phone or cleared browser data can\'t wipe it.</p>'+
+    '<div class="confirm"><button class="btn" data-act="bk-copy"'+dis+'>Copy backup</button><button class="btn" data-act="bk-share"'+dis+'>Share or save file</button></div>';
+  if(ui.backupMsg)h+='<p class="small" role="status">'+esc(ui.backupMsg)+'</p>';
+  h+='<details class="tips" data-open="restore"'+(ui.open.restore?' open':'')+'><summary>Restore from a backup</summary><div class="tips-body">'+
+    '<label class="small muted" for="restore-text">Paste a backup, or pick the backup file.</label>'+
+    '<textarea id="restore-text" class="restore-box" placeholder="{&quot;app&quot;:&quot;calis8&quot;, …}">'+esc(ui.restoreText)+'</textarea>'+
+    '<input id="restore-file" class="file-pick" type="file" accept=".json,application/json,text/plain">';
+  if(ui.pendingRestore)h+='<div class="banner red"><div class="confirm"><span>Replace your '+log.length+' logged session'+(log.length===1?'':'s')+' with the '+ui.pendingRestore.length+' in this backup?</span><button class="btn btn-danger" data-act="bk-yes">Replace</button><button class="btn" data-act="bk-no">Cancel</button></div></div>';
+  else h+='<div><button class="btn" data-act="bk-restore">Restore</button></div>';
+  if(ui.restoreMsg)h+='<p class="small" role="status">'+esc(ui.restoreMsg)+'</p>';
+  h+='</div></details></section>';
+  return h;
+}
+
+/* ---------- keep screen awake during a session ---------- */
+var wakeLock=null;
+function keepAwake(){if(!ui.awake||ui.tab!=='today'||wakeLock||!('wakeLock' in navigator))return;
+  try{navigator.wakeLock.request('screen').then(function(w){wakeLock=w;w.addEventListener('release',function(){wakeLock=null;});}).catch(function(){});}catch(e){}}
+function releaseAwake(){ui.awake=false;if(wakeLock){try{wakeLock.release();}catch(e){}wakeLock=null;}}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')keepAwake();});
+
+/* ---------- helpers ---------- */
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function rungs(k,level){return '<span class="rungs" aria-hidden="true">'+TRACKS[k].levels.map(function(_,j){return '<i class="rung'+(j<=level?' on':'')+'"></i>';}).join('')+'</span>';}
+function gripChip(k){var g=TRACKS[k].grip;return g==='grip'?'<span class="chip grip">Uses grip</span>':(g==='neutral'?'<span class="chip">Neutral-wrist grip</span>':'<span class="chip">No wrist load</span>');}
+
+/* ---------- Today ---------- */
+function cardHTML(k,r,i){
+  var T=TRACKS[k],L=T.levels[r.level],rounds=roundsFor(i),hold=isHold(L);
+  var roundsHtml=r.reps.slice(0,rounds).map(function(v,j){
+    return '<div class="round"><span class="rlabel">R'+(j+1)+'</span>'+
+      '<button type="button" class="step" data-act="dec" data-k="'+k+'" data-j="'+j+'" aria-label="'+esc(T.name)+' round '+(j+1)+' less">−</button>'+
+      '<input id="in-'+k+'-'+j+'" class="rin" type="number" inputmode="numeric" min="0" max="600" value="'+(v===''?'':Number(v))+'" data-k="'+k+'" data-j="'+j+'" aria-label="'+esc(T.name)+' round '+(j+1)+', '+unitLabel(L.unit)+'">'+
+      '<button type="button" class="step" data-act="inc" data-k="'+k+'" data-j="'+j+'" aria-label="'+esc(T.name)+' round '+(j+1)+' more">+</button></div>';
+  }).join('')+(hold?'<button type="button" class="timer-btn" data-act="hold" data-sec="'+r.target+'">Start '+r.target+' s timer</button>':'');
+  var lights=[['G','Green','0–3/10'],['Y','Yellow','4–5/10'],['R','Red','sharp · tingling']].map(function(x){
+    return '<button type="button" class="light" data-act="wrist" data-k="'+k+'" data-v="'+x[0]+'" aria-pressed="'+(r.wrist===x[0])+'"><b>'+x[1]+'</b><span>'+x[2]+'</span></button>';}).join('');
+  var note='';
+  if(r.wrist==='Y')note='<p class="note amber"><strong>Yellow:</strong> finish only if it stays at 4–5/10. Next time keeps the same target. If it was yellow last time too, use the swap or drop a level below.</p>';
+  if(r.wrist==='R')note='<p class="note red"><strong>Red:</strong> stop this exercise for today and log what you got. Next time drops back one level. Numbness or tingling, or red twice in a row, means it is time to get the wrist checked.</p>';
+  if(r.swapped&&T.swap)note+='<p class="note info">Logging the swap ('+esc(T.swap.name)+'). The target stays the same next time.</p>';
+  var levelOpts=T.levels.map(function(Lv,j){return '<option value="'+j+'"'+(j===r.level?' selected':'')+'>Level '+(j+1)+' · '+esc(Lv.name)+'</option>';}).join('');
+  var toggles='';
+  if(T.swap)toggles+='<label class="toggle"><input type="checkbox" data-act="swapped" data-k="'+k+'"'+(r.swapped?' checked':'')+'><span>I did the swap instead: '+esc(T.swap.name)+'</span></label>';
+  toggles+='<label class="toggle"><input type="checkbox" data-act="easy" data-k="'+k+'"'+(r.easy?' checked':'')+'><span>Way too easy (4+ reps to spare every round) · move me up a level</span></label>';
+  var tipsOpen=ui.open['tips-'+k]?' open':'';
+  return '<article class="ex" aria-label="'+esc(T.name)+'">'+
+    '<div class="ex-head"><div><div class="eyebrow">'+esc(T.name)+'</div><h3>'+esc(L.name)+'</h3></div>'+
+      '<div class="ladder">'+rungs(k,r.level)+'<span class="lvl-txt">L'+(r.level+1)+'/'+T.levels.length+'</span></div></div>'+
+    '<div><div class="target"><span class="tnum">'+rounds+' × '+r.target+'</span><span class="tunit">'+unitLabel(L.unit)+'</span></div>'+
+      '<p class="range">Range '+L.min+'–'+L.max+' '+(hold?'s':'')+' · '+(r.level<T.levels.length-1?'level up after '+L.max:'top level')+'</p></div>'+
+    '<p class="how">'+esc(L.how)+'</p>'+
+    '<div class="chips">'+gripChip(k)+'<span class="chip">'+esc(T.where)+'</span></div>'+
+    '<div class="rounds">'+roundsHtml+'</div>'+
+    '<div class="wrist"><span class="row-label">Wrist check</span><div class="lights">'+lights+'</div>'+note+'</div>'+
+    '<div class="toggles">'+toggles+'</div>'+
+    '<details class="tips" data-open="tips-'+k+'"'+tipsOpen+'><summary>Wrist tips, swap and level</summary><div class="tips-body">'+
+      '<ul>'+T.tips.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul>'+
+      (T.swap?'<div class="swapbox"><b>If it bothers the wrist: '+esc(T.swap.name)+'</b><span>'+esc(T.swap.how)+'</span></div>':'')+
+      '<label class="lvl-pick"><span class="row-label">Change level</span><select data-act="level" data-k="'+k+'">'+levelOpts+'</select></label>'+
+    '</div></details>'+
+  '</article>';
+}
+function checklistHTML(id,title,items,minutes){
+  var open=ui.open[id]?' open':'';
+  var done=items.filter(function(_,j){return draft.checks[id+j];}).length;
+  return '<details class="routine" data-open="'+id+'"'+open+'><summary><span>'+title+' <span class="muted small">· '+minutes+'</span></span><span class="muted small">'+done+'/'+items.length+'</span></summary>'+
+    '<ul class="checklist">'+items.map(function(it,j){return '<li><label><input type="checkbox" data-act="check" data-id="'+id+j+'"'+(draft.checks[id+j]?' checked':'')+'><span>'+esc(it[0])+'</span><span class="amt">'+esc(it[1])+'</span></label></li>';}).join('')+'</ul></details>';
+}
+function summaryHTML(){
+  var s=ui.summary;if(!s)return '';
+  var st=replayAll(log).state,e=log[s.i];if(!e)return '';
+  var items=Object.keys(e.results).map(function(k){
+    var o=(replayAll(log).outcomes[s.i]||{})[k]||'repeat',Lnow=TRACKS[k].levels[st[k].level],Ldone=TRACKS[k].levels[clampLevel(k,e.results[k].level)];
+    var meta=OUTCOME[o];
+    return '<li><span><b>'+esc(TRACKS[k].name)+'</b> → '+esc(Lnow.name)+', '+st[k].target+' '+unitLabel(Lnow.unit)+'</span><span><span class="'+meta.cls+'">'+meta.txt(Ldone)+'</span> <span class="why">· '+meta.why+'</span></span></li>';
+  }).join('');
+  return '<section class="summary" aria-live="polite"><div class="eyebrow">Session '+(s.i+1)+' saved · '+fmtDate(e.date)+'</div><h2>Next time</h2><ul class="next-list">'+items+'</ul><div><button class="btn" data-act="dismiss">Got it</button></div></section>';
+}
+function renderToday(){
+  ensureDraft();
+  var i=log.length,w=workoutFor(i),ph=PHASES[phaseFor(i)],rounds=roundsFor(i),bonus=i>=TOTAL;
+  var h='';
+  h+=summaryHTML();
+  if(bonus)h+='<div class="banner green"><strong>All 24 sessions done.</strong><span>Retest: one max-rep set at your current push-up level and compare it to session 1. Keep logging to carry on with 3-round sessions.</span></div>';
+  h+='<section class="head"><div class="eyebrow">'+(bonus?'Bonus session '+(i-TOTAL+1):'Session '+(i+1)+' of '+TOTAL+' · Week '+weekFor(i)+' · '+ph.name)+'</div>'+
+     '<h1>Workout '+w+'</h1>'+
+     '<div class="meta"><span><b>'+rounds+' rounds</b></span><span>rest '+ph.rest+' between rounds</span><span>'+ph.time+'</span>'+(bonus?'':'<span>planned '+fmtDate(plannedDate(i))+'</span>')+'</div>'+
+     '<label class="datefield">Session date <input type="date" id="sess-date" value="'+esc(draft.date)+'" data-act="date"></label></section>';
+  var gap=returningGap();
+  if(gap>=8)h+='<div class="banner amber"><strong>Welcome back. It has been '+gap+' days.</strong><span>Targets are set back to what you did last time instead of moving forward.</span></div>';
+  else if(log.length&&log[log.length-1].date===draft.date)h+='<div class="banner amber"><strong>You already logged a session on this date.</strong><span>Leave at least one rest day between sessions.</span></div>';
+  else if(!bonus&&diffDays(plannedDate(i),draft.date)>=3)h+='<div class="banner info"><strong>Behind the calendar? No problem.</strong><span>The plan slides with you. Never double up to catch up.</span></div>';
+  if(i===6)h+='<div class="banner info"><strong>Week 3: third round starts today.</strong><span>Targets stay where they were. The extra round is this week\'s jump.</span></div>';
+  h+=checklistHTML('warmup','Warm-up',WARMUP,'4 min');
+  h+='<div class="circuit-label"><h2>Circuit</h2><span class="muted small">Top to bottom, rest, repeat ×'+rounds+'</span></div>';
+  WORKOUTS[w].forEach(function(k){h+=cardHTML(k,draft.res[k],i);});
+  h+=checklistHTML('cool','Cool-down',COOLDOWN,'3–4 min');
+  if(ui.error)h+='<p class="error" role="alert">'+esc(ui.error)+'</p>';
+  h+='<button class="btn-primary" data-act="finish">Finish session '+(i+1)+'</button>';
+  h+='<p class="muted small">Rounds are pre-filled with the target. Change only what you actually got. Finishing works out every next target from the progression rules.</p>';
+  return h;
+}
+
+/* ---------- Plan ---------- */
+function renderPlan(){
+  var done=Math.min(log.length,TOTAL),h='';
+  h+='<section class="head"><div class="eyebrow">Oct 12 – Dec 4 · Mon / Wed / Fri</div><h1>The 8 weeks</h1>'+
+     '<div class="meta"><span><b>'+done+' of '+TOTAL+'</b> sessions done</span><span>12 × Workout A, 12 × Workout B</span></div>'+
+     '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="24" aria-valuenow="'+done+'"><i style="width:'+(done/TOTAL*100)+'%"></i></div></section>';
+  h+='<div class="phase-key"><span><b>Weeks 1–2</b> Foundation · 2 rounds</span><span><b>3–5</b> Build · 3 rounds</span><span><b>6–8</b> Strengthen · 3 rounds</span></div>';
+  h+='<div class="weeks">';
+  for(var w=0;w<8;w++){
+    var ph=PHASES[phaseFor(w*3)];
+    h+='<div class="week"><div class="wk"><b>Week '+(w+1)+'</b><span class="muted">'+ph.name+'</span></div>';
+    for(var d=0;d<3;d++){var i=w*3+d,cls='cell',st;
+      if(i<log.length){cls+=' done';st='Done '+fmtShort(log[i].date);}
+      else if(i===log.length){cls+=' next';st='Next';}
+      else st='';
+      h+='<div class="'+cls+'"><span class="wo">'+workoutFor(i)+'</span><span class="muted">'+fmtDate(plannedDate(i)).replace(',','')+'</span><span class="st">'+st+'</span></div>';}
+    h+='</div>';
+  }
+  h+='</div>';
+  h+='<div class="section"><h2>Rules of thumb</h2><ul>'+
+     '<li>Keep at least one rest day between sessions. Missed a day? Slide the schedule; never double up.</li>'+
+     '<li>Thanksgiving is Thu, Nov 26. Friday\'s session can move to Saturday.</li>'+
+     '<li>Missed a whole week? The app sets your targets back to what you did last time.</li>'+
+     '<li>After session 24, do one max-rep set at your current push-up level to see how far you\'ve come.</li></ul></div>';
+  return h;
+}
+
+/* ---------- Ladders ---------- */
+function renderLadders(){
+  var st=replayAll(log).state,h='<section class="head"><div class="eyebrow">Progression</div><h1>Exercise ladders</h1><p class="muted">Hit the target in every round and the next session adds a rep (or 5 s). Top the range and you climb a rung. Miss and you repeat; miss twice and the target drops by 2.</p></section>';
+  ORDER.forEach(function(k){var T=TRACKS[k],s=st[k],L=T.levels[s.level];
+    h+='<section class="track"><div class="ex-head"><div><div class="eyebrow">'+esc(T.where)+'</div><h2>'+esc(T.name)+'</h2></div><div class="ladder">'+rungs(k,s.level)+'<span class="lvl-txt">L'+(s.level+1)+'/'+T.levels.length+'</span></div></div>'+
+      '<div class="chips">'+gripChip(k)+'<span class="chip">Next target: '+s.target+' '+unitLabel(L.unit)+'</span></div><ol class="levels">';
+    T.levels.forEach(function(Lv,j){h+='<li class="'+(j===s.level?'cur':'')+'"><span class="n">'+(j+1)+'</span><div><div class="nm">'+esc(Lv.name)+(j===s.level?' <span class="here">· You are here</span>':'')+'</div><div class="rg">'+Lv.min+'–'+Lv.max+' '+unitLabel(Lv.unit)+'</div><p class="small">'+esc(Lv.how)+'</p></div></li>';});
+    h+='</ol>'+(T.swap?'<div class="swapbox"><b>Wrist swap: '+esc(T.swap.name)+'</b><span class="small">'+esc(T.swap.how)+'</span></div>':'')+'</section>';
+  });
+  return h;
+}
+
+/* ---------- Wrist guide ---------- */
+function renderWrist(){
+  return '<section class="head"><div class="eyebrow">Right wrist</div><h1>Wrist guide</h1><p class="muted">Rate the wrist from 0 to 10 during each exercise, then again the next morning. The app adjusts your next targets from what you pick.</p></section>'+
+  '<div class="guide">'+
+  '<section class="section"><h2>Traffic light</h2>'+
+    '<div class="lightrow G"><span class="tag">Green</span><div><p>0–3/10 during the set, gone by the next morning.</p><p class="muted">Train as written. Progression runs normally.</p></div></div>'+
+    '<div class="lightrow Y"><span class="tag">Yellow</span><div><p>4–5/10, or still achy the next day.</p><p class="muted">Finish if it holds steady. The target does not move. Yellow twice in a row: use the swap or drop a level.</p></div></div>'+
+    '<div class="lightrow R"><span class="tag">Red</span><div><p>Sharp pain, above 5/10, or numbness or tingling in your fingers.</p><p class="muted">Stop that exercise for today. Next session drops back one level. If it happens again, get it checked before continuing that movement.</p></div></div>'+
+  '</section>'+
+  '<section class="section"><h2>Positions</h2><ul>'+
+    '<li><b>Neutral wrist:</b> forearm, back of the hand and knuckles in one straight line.</li>'+
+    '<li><b>Pushing:</b> handles, dumbbells, fists, or hands wrapped around an edge. Never flat palms.</li>'+
+    '<li><b>Planks and core:</b> on forearms only, hands relaxed.</li>'+
+    '<li><b>Grip work:</b> only the Workout A row. Workout B\'s back exercise has no grip.</li>'+
+    '<li><b>Stretching:</b> gentle wrist circles only. Skip prayer stretches and anything that presses the palm flat.</li>'+
+    '<li><b>No twisting or side-to-side flicking under load.</b></li></ul></section>'+
+  '<section class="section"><h2>Swaps</h2><ul>'+ORDER.filter(function(k){return TRACKS[k].swap;}).map(function(k){var T=TRACKS[k];return '<li><b>'+esc(T.name)+' → '+esc(T.swap.name)+'.</b> '+esc(T.swap.how)+'</li>';}).join('')+
+    '<li><b>Logging a swap</b> holds that exercise\'s target, so you pick up where you left off when the wrist settles.</li></ul></section>'+
+  '<section class="section"><h2>Between workouts</h2><ul>'+
+    '<li>Open jars with a rubber grip pad or a jar opener instead of a hard wrist twist.</li>'+
+    '<li>Switch hands or use both hands for long stirring.</li>'+
+    '<li>Toss the wok with your left hand, or push food around with a spatula instead of flipping.</li>'+
+    '<li>At the desk, keep the wrist flat on the keyboard and mouse rather than bent up.</li></ul></section>'+
+  '<section class="section"><h2>When to get it checked</h2><ul>'+
+    '<li>Numbness or tingling in the thumb, index or middle finger, especially at night.</li>'+
+    '<li>Weakness, dropping things, or swelling.</li>'+
+    '<li>Pain that keeps climbing week to week, or red more than once.</li></ul>'+
+    '<p class="small muted">A hand specialist or physical therapist can tell carpal tunnel, arthritis and thumb-side tendon irritation apart. Twisting jars, stirring and wok flipping fit all three, and each changes which positions to avoid. This app is a training guide, not medical advice.</p></section>'+
+  '</div>';
+}
+
+/* ---------- Log ---------- */
+function renderLog(){
+  var h='<section class="head"><div class="eyebrow">History</div><h1>Session log</h1><p class="muted">Saved on this phone. Use Backup below to keep a copy somewhere safe.</p></section>';
+  if(!log.length)return h+'<div class="empty">No sessions yet. Finish your first workout on the Today tab and it shows up here.</div>'+backupHTML();
+  var rep=replayAll(log);
+  if(ui.confirmUndo)h+='<div class="banner red"><div class="confirm"><span>Remove session '+log.length+' ('+fmtDate(log[log.length-1].date)+')? Targets recalculate.</span><button class="btn btn-danger" data-act="undo-yes">Remove</button><button class="btn" data-act="undo-no">Keep</button></div></div>';
+  else h+='<div><button class="btn" data-act="undo">Undo last session</button></div>';
+  for(var i=log.length-1;i>=0;i--){var e=log[i],o=rep.outcomes[i]||{};
+    h+='<article class="entry"><div class="entry-head"><b>Session '+(i+1)+' · Workout '+esc(e.workout||workoutFor(i))+'</b><span class="muted small">'+(validDate(e.date)?fmtDate(e.date):'')+' · '+(e.rounds||roundsFor(i))+' rounds</span></div>'+
+      '<div class="tbl-wrap"><table><thead><tr><th>Exercise</th><th>Target</th><th>Got</th><th>Wrist</th><th>Next</th></tr></thead><tbody>';
+    Object.keys(e.results).forEach(function(k){if(!TRACKS[k])return;var r=e.results[k],L=TRACKS[k].levels[clampLevel(k,r.level)],m=OUTCOME[o[k]]||OUTCOME.repeat;
+      var w=r.wrist==='Y'||r.wrist==='R'?r.wrist:'G';
+      h+='<tr><td>'+esc(L.name)+(r.swapped?' <span class="muted">(swap)</span>':'')+'<br><span class="muted small">'+esc(TRACKS[k].name)+' L'+(clampLevel(k,r.level)+1)+'</span></td><td>'+r.target+'</td><td>'+(r.reps||[]).map(Number).join(', ')+'</td><td><span class="dot '+w+'"></span>'+{G:'Green',Y:'Yellow',R:'Red'}[w]+'</td><td class="'+m.cls+'">'+m.txt(L)+'</td></tr>';});
+    h+='</tbody></table></div></article>';
+  }
+  return h+backupHTML();
+}
+
+/* ---------- render ---------- */
+var main=document.getElementById('main');
+function render(){
+  document.querySelectorAll('.tab').forEach(function(t){t.setAttribute('aria-selected',String(t.dataset.tab===ui.tab));});
+  var h={today:renderToday,plan:renderPlan,ladders:renderLadders,wrist:renderWrist,log:renderLog}[ui.tab]();
+  h+='<footer><span>Full write-up: <a href="'+DOC_URL+'" target="_blank" rel="noopener">8-Week Calisthenics Plan</a></span><span>Progressive overload rule: add a rep when you hit every round; repeat when you don\'t.</span></footer>';
+  main.innerHTML=h;
+  updTimer();
+}
+
+/* ---------- timer ---------- */
+var timer=null,tick=null,ac=null;
+function beep(){try{if(!ac)return;var t=ac.currentTime;[0,0.25,0.5].forEach(function(o){var g=ac.createGain(),osc=ac.createOscillator();osc.frequency.value=880;g.gain.setValueAtTime(0.0001,t+o);g.gain.exponentialRampToValueAtTime(0.25,t+o+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+o+0.18);osc.connect(g);g.connect(ac.destination);osc.start(t+o);osc.stop(t+o+0.2);});}catch(e){}}
+function startTimer(sec,label){
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();}catch(e){ac=null;}
+  timer={end:Date.now()+sec*1000,label:label,done:false};clearInterval(tick);tick=setInterval(updTimer,250);updTimer();
+}
+function stopTimer(){timer=null;clearInterval(tick);updTimer();}
+function updTimer(){
+  var bar=document.getElementById('timerbar'),txt=document.getElementById('tb-text'),clk=document.getElementById('tb-clock'),btn=document.getElementById('tb-btn');
+  if(ui.tab!=='today'){bar.hidden=true;return;}
+  bar.hidden=false;
+  var ph=PHASES[phaseFor(log.length)];
+  if(!timer){txt.innerHTML='<b>Rest between rounds</b><span>'+ph.rest+' · tap when the round ends</span>';clk.hidden=true;btn.textContent='Rest '+ph.restSec+' s';btn.className='tb-btn';btn.dataset.act='rest';return;}
+  var rem=Math.ceil((timer.end-Date.now())/1000);
+  if(rem<=0&&!timer.done){timer.done=true;beep();try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}setTimeout(function(){if(timer&&timer.done)stopTimer();},4000);}
+  clk.hidden=false;
+  if(timer.done){clk.textContent='0:00';clk.className='tb-clock done';txt.innerHTML='<b>'+esc(timer.label)+'</b><span>Time. Next one.</span>';}
+  else{clk.textContent=Math.floor(rem/60)+':'+String(rem%60).padStart(2,'0');clk.className='tb-clock';txt.innerHTML='<b>'+esc(timer.label)+'</b><span>Running</span>';}
+  btn.textContent='Stop';btn.className='tb-btn ghost';btn.dataset.act='stop';
+}
+
+/* ---------- events ---------- */
+function setTab(t){if(t!=='today')releaseAwake();ui.tab=t;ui.confirmUndo=false;ui.backupMsg='';ui.restoreMsg='';ui.pendingRestore=null;lsSet(LS_TAB,t);render();window.scrollTo(0,0);}
+document.querySelector('.tabs').addEventListener('click',function(e){var b=e.target.closest('.tab');if(b)setTab(b.dataset.tab);});
+document.getElementById('tb-btn').addEventListener('click',function(e){var a=e.currentTarget.dataset.act;if(a==='rest')startTimer(PHASES[phaseFor(log.length)].restSec,'Rest');else stopTimer();});
+document.addEventListener('toggle',function(e){var d=e.target;if(d&&d.dataset&&d.dataset.open){ui.open[d.dataset.open]=d.open;}},true);
+
+main.addEventListener('click',function(e){
+  if(ui.tab==='today'){ui.awake=true;keepAwake();}
+  var b=e.target.closest('[data-act]');if(!b)return;var a=b.dataset.act,k=b.dataset.k;
+  if(a==='bk-copy'){copyBackup();return;}
+  if(a==='bk-share'){shareBackup();return;}
+  if(a==='bk-restore'){var lg=parseBackup(ui.restoreText);ui.restoreMsg='';
+    if(!lg){ui.restoreMsg='That does not look like a backup from this app. Paste the whole backup text, starting with {.';render();return;}
+    ui.pendingRestore=lg;render();return;}
+  if(a==='bk-no'){ui.pendingRestore=null;render();return;}
+  if(a==='bk-yes'){log=ui.pendingRestore;ui.pendingRestore=null;ui.restoreText='';ui.restoreMsg='Restored '+log.length+' sessions.';ui.summary=null;draft=null;lsDel(LS_DRAFT);persist();render();return;}
+  if(a==='inc'||a==='dec'){var r=draft.res[k],L=TRACKS[k].levels[r.level],j=Number(b.dataset.j),v=Number(r.reps[j])||0;
+    r.reps[j]=Math.max(0,v+(a==='inc'?L.step:-L.step));saveDraft();var inp=document.getElementById('in-'+k+'-'+j);if(inp)inp.value=r.reps[j];return;}
+  if(a==='wrist'){draft.res[k].wrist=b.dataset.v;saveDraft();render();return;}
+  if(a==='hold'){startTimer(Number(b.dataset.sec),'Hold');return;}
+  if(a==='finish'){finish();return;}
+  if(a==='dismiss'){ui.summary=null;render();return;}
+  if(a==='undo'){ui.confirmUndo=true;render();return;}
+  if(a==='undo-no'){ui.confirmUndo=false;render();return;}
+  if(a==='undo-yes'){log=log.slice(0,-1);ui.confirmUndo=false;ui.summary=null;draft=null;lsDel(LS_DRAFT);persist();render();return;}
+});
+main.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='restore-text'){ui.restoreText=t.value;return;}
+  if(t.classList.contains('rin')){var r=draft.res[t.dataset.k];r.reps[Number(t.dataset.j)]=t.value===''?'':Math.max(0,Number(t.value));saveDraft();}
+});
+main.addEventListener('change',function(e){
+  var t=e.target,a=t.dataset.act,k=t.dataset.k;
+  if(t.id==='restore-file'&&t.files&&t.files[0]){var fr=new FileReader();fr.onload=function(){ui.restoreText=String(fr.result||'');ui.restoreMsg='';ui.open.restore=true;render();};fr.readAsText(t.files[0]);return;}
+  if(a==='date'&&validDate(t.value)){draft.date=t.value;draft.dateEdited=true;saveDraft();render();}
+  else if(a==='swapped'||a==='easy'){draft.res[k][a]=t.checked;saveDraft();render();}
+  else if(a==='check'){draft.checks[t.dataset.id]=t.checked;saveDraft();render();}
+  else if(a==='level'){var r=draft.res[k],lv=clampLevel(k,t.value);r.level=lv;r.target=TRACKS[k].levels[lv].min;r.reps=r.reps.map(function(){return r.target;});saveDraft();render();}
+});
+
+function finish(){
+  var i=log.length,rounds=roundsFor(i),w=workoutFor(i),results={},missing=false;
+  WORKOUTS[w].forEach(function(k){var r=draft.res[k];var reps=r.reps.slice(0,rounds);
+    if(reps.length<rounds||reps.some(function(x){return x===''||isNaN(Number(x));}))missing=true;
+    results[k]={level:r.level,target:r.target,reps:reps.map(Number),wrist:r.wrist,swapped:!!r.swapped,easy:!!r.easy};});
+  if(missing){ui.error='Fill in every round before finishing. Enter 0 for a round you skipped.';render();return;}
+  if(!validDate(draft.date)){ui.error='Pick a session date.';render();return;}
+  log=log.concat([{i:i,date:draft.date,workout:w,rounds:rounds,results:results}]);
+  ui.summary={i:i};ui.error='';draft=null;lsDel(LS_DRAFT);releaseAwake();
+  persist();render();window.scrollTo(0,0);
+}
+
+setSync('device');
+render();
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+}
+})();
+</script>
+
+</body>
+</html>
